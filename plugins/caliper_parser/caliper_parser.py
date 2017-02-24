@@ -400,8 +400,10 @@ class LogConverter():
         fp = open(outfile, 'a+')
 
         current_dir = os.path.dirname(sys.modules[__name__].__file__)
-        parser_dir = os.path.abspath(os.path.join(current_dir, 'parser_scripts'))
-        rel_path = "parser_scripts/" + parser_file
+        parser_dir = os.path.abspath(os.path.join(current_dir, '..', '..'))
+        test_parser_dir = os.path.abspath(os.path.join(
+                parser_dir, 'plugins', 'caliper_parser', 'parser_scripts'))
+
 
         # FRONT_TMP_DIR = os.path.join(CALIPER_DIR, 'frontend')
 
@@ -413,13 +415,13 @@ class LogConverter():
 
         if not parser_file:
             pwd_file = bench_name + "_parser.py"
-            parser_file = os.path.join(parser_dir, pwd_file)
+            parser_file = os.path.join(test_parser_dir, pwd_file)
         else:
-            parser_file = os.path.join(parser_dir, parser_file)
+            parser_file = os.path.join(test_parser_dir, parser_file)
 
         # rel_path = os.path.relpath(parser_file,
         #                            os.path.dirname(current_dir))
-        #rel_path = os.path.relpath(parser_file)
+        rel_path = os.path.relpath(parser_file, parser_dir)
         parser_path = rel_path.split(".py")[0]
         parser_name = parser_path.replace(os.sep, '.')
 
