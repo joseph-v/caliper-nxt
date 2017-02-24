@@ -20,28 +20,26 @@ import ConfigParser
 #===============================================================
 # Configuration class for caliper input and output
 #===============================================================
-COMBINED_LOG_FILE = 'final_parsing_logs.yaml'
-TEST_CONFIG_DIR = '/home/joseph/avocado/caliper_results/test_configs'
-#PARSER_LOG_DIR = '/home/joseph/avocado/caliper_results/parser_logs'
-#PARSER_SCRIPTS_DIR = '/home/joseph/avocado/caliper_results/parser'
-
-#===============================================================
-# Config class
-#===============================================================
 class Config():
     def __init__(self, config_file, caliper_output):
         # configuration file from caliper run command
         self.config_file = config_file
         # output path from caliper run command
         self.caliper_output = caliper_output
+        self.parsed_yaml_file = 'final_parsing_logs.yaml'
 
-        self.utils = Utils()
-        input_config, input_section = self.utils.read_config_file(self.config_file)
-        # Extract input configurations from config file
-        self.config_files = input_config.options(input_section[0])
-        # Extract test configurations from config file
-        self.test_configs = input_config.options(input_section[1])
-
+        try:
+            self.utils = Utils()
+            input_config, input_section = self.utils.read_config_file(self.config_file)
+            # Extract input configurations from config file
+            self.config_files = input_config.options(input_section[0])
+            # Extract test configurations from config file
+            test_dir = input_config.options(input_section[1])
+            self.tests_config_dir = input_config.get(input_section[1], test_dir[0])
+        except Exception:
+            print 'DEBUG: Caliper:ERROR initializing Configurations ...'
+        else:
+            print 'DEBUG: Caliper:Config initialized ...'
 
 #===============================================================
 # Scoring tools
@@ -395,7 +393,7 @@ class LogConverter():
     def __init__(self):
         self.utils = Utils()
 
-    def parser_case(self, kind_bench, bench_name, parser_file, parser, infile, outfile):
+    def parser_case(self, kind_bench, bench_name, parser_file, parser, infile, outfile, yaml_dir, host_name):
         if not os.path.exists(infile):
             return -1
         result = 0
@@ -464,9 +462,6 @@ class LogConverter():
                         if not parser == 'hardware_info_parser':
                             result = methodToCall(content, outfp)
                         else:
-                            host_name = self.utils.get_host_name('dummy')
-                            yaml_dir = os.path.join(os.path.join(self.output_dir, 'results'),'yaml')
-
                             result = methodToCall(content, outfp, host_name, yaml_dir)
                     except Exception, e:
                         logging.info(e)
@@ -481,15 +476,11 @@ class LogConverter():
         """
         function: run one benchmark which was selected in the configuration files
         """
-
-#        tests_cfg_dir = self.test_configs
-        tests_cfg_dir = TEST_CONFIG_DIR
-
         try:
             # get the abspath, which is filename of run config for the benchmark
             # JVP individual test case configuration -- to be copied
             bench_conf_file = os.path.join(
-                tests_cfg_dir,
+                self.tests_config_dir,
                 test_sub_dir, run_file)
 
             # get the config sections for the benchmrk
@@ -506,6 +497,8 @@ class LogConverter():
 
         # logging.debug("the sections to run are: %s" % sections_run)
         # print "DEBUG: Caliper: sections to run are: %s" % sections_run
+        host_name = self.utils.get_host_name('dummy')
+        yaml_dir = os.path.join(os.path.join(caliper_output_dir, 'results'), 'yaml')
 
         exec_dir = os.path.join(caliper_output_dir, 'output_logs')
         if not os.path.exists(exec_dir):
@@ -570,7 +563,7 @@ class LogConverter():
                     outfp.close()
                     parser_result = self.parser_case(test_sub_dir, bench_name, parser_file,
                                                      parser, subsection_file,
-                                                     tmp_parser_file)
+                                                     tmp_parser_file, yaml_dir, host_name)
                 else:
                     outfp = open(logfile, 'r')
                     infp = open(tmp_log_file, 'w')
@@ -580,7 +573,7 @@ class LogConverter():
                     outfp.close()
                     parser_result = self.parser_case(test_sub_dir, bench_name, parser_file,
                                                      parser, tmp_log_file,
-                                                     tmp_parser_file)
+                                                     tmp_parser_file, yaml_dir, host_name)
                 dic[bench_name][sections_run[i]]["type"] = type(parser_result)
                 dic[bench_name][sections_run[i]]["value"] = parser_result
 
@@ -602,10 +595,15 @@ class LogConverter():
                     continue
 
     # Implementation of parse
-    def parse_logs(self, config_filename, caliper_output_dir):
+    #def parse_logs(self, config_filename, caliper_output_dir):
+    def parse_logs(self, conf):
 
         # TODO: use config object here JVP
-        self.output_dir = caliper_output_dir
+        caliper_output_dir = conf.caliper_output
+        config_filename = conf.config_file
+        self.tests_config_dir = conf.tests_config_dir
+
+        #self.output_dir = caliper_output_dir
         input_config, input_section = self.utils.read_config_file(config_filename)
         config_files = input_config.options(input_section[0])
 
@@ -664,7 +662,7 @@ class LogConverter():
         #                          caliper_path.folder_ope.name.strip()
         #                          +"/final_parsing_logs.yaml"),'w')
         outfp = open(os.path.join(caliper_output_dir,
-                                  COMBINED_LOG_FILE), 'w')
+                                  conf.parsed_yaml_file), 'w')
         outfp.write(yaml.dump(dic, default_flow_style=False))
         outfp.close()
         return 0
@@ -680,8 +678,9 @@ class CalculateScore():
     name = 'Parser'
     description = 'Calculate score from parsed log'
 
-    def __init__(self, output_dir):
-        self.output_dir = output_dir
+    def __init__(self, conf):
+        self.output_dir = conf.caliper_output
+        self.tests_config_dir = conf.tests_config_dir
         self.utils = Utils()
         self.write_results = Write_Tool()
 
@@ -768,10 +767,10 @@ class CalculateScore():
             return -4
 
 
-    def collate_logs(self, flag):
+    def collate_logs(self, yaml_file, flag):
         # according the method in the config file, compute the score
         # dic = yaml.load(open(caliper_path.folder_ope.final_parser, 'r'))
-        final_parserd_file = os.path.join(self.output_dir, COMBINED_LOG_FILE)
+        final_parserd_file = os.path.join(self.output_dir, yaml_file)
         dic = yaml.load(open(final_parserd_file, 'r'))
 
         #utils = Utils()
@@ -779,8 +778,7 @@ class CalculateScore():
         # Need to correctly identify options ARM/ARM32/Server
         options = ''
 
-        print "DEBUG: Caliper: test_config_dir =%s" % TEST_CONFIG_DIR
-        config_files = self.utils.get_cases_def_files(options, TEST_CONFIG_DIR)
+        config_files = self.utils.get_cases_def_files(options, self.tests_config_dir)
         print "DEBUG: Caliper: config_files =%s" % config_files
 
         for i in range(0, len(config_files)):
@@ -804,7 +802,7 @@ class CalculateScore():
                 bench = os.path.join(classify, sections[j])
                 try:
                     # get the abspath, which is filename of run config for the benchmark
-                    bench_conf_file = os.path.join(TEST_CONFIG_DIR, bench, run_file)
+                    bench_conf_file = os.path.join(self.tests_config_dir, bench, run_file)
                     # get the config sections for the benchmrk
                     configRun, sections_run = self.utils.read_config_file(
                         bench_conf_file)
@@ -885,34 +883,35 @@ class Parser(JobPre, JobPost):
 
         try:
             self.converter = LogConverter()
-            self.converter.parse_logs(self.config_file, self.caliper_output)
+            self.converter.parse_logs(self.config)
         except Exception:
             print 'DEBUG: Caliper:ERROR while PARSE ...'
 
 
         try:
-            self.scorer = CalculateScore(self.caliper_output)
-            self.scorer.collate_logs(1)
+            self.scorer = CalculateScore(self.config)
+            input_yaml = self.config.parsed_yaml_file
+            self.scorer.collate_logs(input_yaml, 1)
         except Exception:
             print 'DEBUG: Caliper:ERROR while SCORE 1 ...'
 
 
         try:
-            self.scorer.collate_logs(2)
+            self.scorer.collate_logs(input_yaml, 2)
         except Exception:
             print 'DEBUG: Caliper:ERROR while SCORE 2 ...'
 
 
         print 'DEBUG: Caliper:PARSING is Done ...'
 
-    def create_output_dir(self):
-        self.output_logs_dir = os.path.join(self.caliper_output, 'output_logs')
-        self.results_dir = os.path.join(self.caliper_output, 'results')
+    def create_output_dir(self, output_dir):
+        self.output_logs_dir = os.path.join(output_dir, 'output_logs')
+        self.results_dir = os.path.join(output_dir, 'results')
         self.yaml_dir = os.path.join(self.results_dir, 'yaml')
 
         try:
-            if not os.path.exists(self.caliper_output):
-                os.mkdir(self.caliper_output)
+            if not os.path.exists(output_dir):
+                os.mkdir(output_dir)
             if not os.path.exists(self.output_logs_dir):
                 os.mkdir(self.output_logs_dir)
             if not os.path.exists(self.results_dir):
@@ -933,28 +932,28 @@ class Parser(JobPre, JobPost):
 
     def parser(self, job):
         # Read configuration file name from command line
-        self.config_file = getattr(job.args, 'config_filename', False)
-        if not self.config_file:
+        config_file = getattr(job.args, 'config_filename', False)
+        if not config_file:
             print 'DEBUG: Caliper: Caliper parser is not enabled...'
             return
 
-        if not os.path.exists(self.config_file):
+        if not os.path.exists(config_file):
             print 'DEBUG: Caliper: Caliper config file is not found...'
             return
 
         # Read output folder name from command line
-        self.caliper_output = getattr(job.args, 'caliper_output', False)
-        if not self.caliper_output:
-            self.caliper_output = os.path.join(job.logdir, 'caliper_output')
+        output_dir = getattr(job.args, 'caliper_output', False)
+        if not output_dir:
+            output_dir = os.path.join(job.logdir, 'caliper_output')
             print 'Output folder is not specified in commandline'
-            print 'Using default location %s' % self.caliper_output
+            print 'Using default location %s' % output_dir
 
         try:
             # Instantiate config
-            self.config = Config(self.config_file, self.caliper_output)
+            self.config = Config(config_file, output_dir)
 
             # Create ouput folders
-            self.create_output_dir()
+            self.create_output_dir(output_dir)
         except Exception:
             print 'DEBUG: Caliper:ERROR while initializing parser ...'
 
