@@ -1,16 +1,15 @@
 from setuptools import setup, find_packages
 
-name = 'caliper-nxt'
-name
+name11 = 'caliper_cli'
 
 name1 = 'plugins.caliper_cmd.caliper'
 klass1 = 'Caliper'
-entry_point1 = '%s = %s:%s' % (name, name1, klass1)
+entry_point1 = '%s = %s:%s' % (name11, name1, klass1)
 
+name22 = 'caliper_post'
 name2 = 'plugins.caliper_parser.caliper_parser'
 klass2 = 'Parser'
-entry_point2 = '%s = %s:%s' % (name, name2, klass2)
-
+entry_point2 = '%s = %s:%s' % (name22, name2, klass2)
 
 if __name__ == '__main__':
     setup(name='caliper-nxt',
