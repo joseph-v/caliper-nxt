@@ -153,8 +153,20 @@ class Utils():
         #         flag = 0
         #     return flag
 
-    def get_host_name(self, host):
-        return 'htsat-slave2-com'
+    def get_host_name(self, out_dir):
+        try:
+            uname_file = os.path.join(out_dir, 'sysinfo', 'post', 'uname_-a')
+            if os.path.exists(uname_file):
+                fp = open(uname_file, "r")
+
+                uname_str = fp.read()
+                fp.close()
+            uname_parts = uname_str.split(' ')
+        except Exception:
+            print 'Error reading host name'
+        else:
+            print 'hostname %s' % uname_parts[1]
+            return uname_parts[1]
         # try:
         #     arch_result = host.run("/bin/uname -a")
         # except error.CmdError, e:
@@ -499,7 +511,7 @@ class LogConverter():
 
         # logging.debug("the sections to run are: %s" % sections_run)
         # print "DEBUG: Caliper: sections to run are: %s" % sections_run
-        host_name = self.utils.get_host_name('dummy')
+        host_name = self.utils.get_host_name(os.path.abspath(os.path.join(caliper_output_dir, '..')))
         yaml_dir = os.path.join(os.path.join(caliper_output_dir, 'results'), 'yaml')
 
         exec_dir = os.path.join(caliper_output_dir, 'output_logs')
@@ -752,7 +764,7 @@ class CalculateScore():
         results_dir = os.path.join(self.output_dir, 'results')
         yaml_dir = os.path.join(results_dir, 'yaml')
 
-        target_name = self.utils.get_host_name(target)
+        target_name = self.utils.get_host_name(os.path.abspath(os.path.join(self.output_dir, '..')))
         result_yaml_name = target_name + '.yaml'
         score_yaml_name = target_name + '_score.yaml'
 
