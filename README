@@ -1,1 +1,32 @@
-<TODO: Readme>
+          Caliper-nxt
+          -----------
+
+Background
+----------
+
+    Caliper-nxt is a plugin for Avocado framework (https://avocado-framework.github.io/), that implements Caliper (http://open-estuary.org/caliper-benchmarking/) Parsing and Scoring features to Avocado framework.
+
+    A proof of concept (PoC) implementation of caliper-nxt is under development on this repository (https://github.com/open-estuary/caliper-nxt)
+
+Installation
+------------
+
+    Steps
+        1. Install Avocado framework as described in the website for avocado.
+        2. Install caliper-nxt with command 'sudo python setup.py install'
+        3. Run command 'avocado plugins' and veryfy that 'caliper-nxt is listed along with plugins for cli & job prepost.
+        4. Run caliper test and veryfy output file generated (details below).
+
+Usage
+-----
+
+    In this PoC implementation, avocado framework accepts two caliper run command options.
+
+        '--caliper <config file>' : Specifies config file to be used for the current avocado job
+        '--caliper-output <output path>' : Specifies the location of parsed/scored outputs
+
+Example usgae
+-------------
+
+    avocado run <path to test folder>/dhrystone.py --caliper <path to config file>/caliper_config.txt
+
