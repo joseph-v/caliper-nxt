@@ -785,8 +785,8 @@ class Parser(JobPre, JobPost):
                     full_dirname = os.path.basename(os.path.dirname(full_filename))
 
                     part_name = re.split('_', re.split(':', full_dirname)[0])
-                    part_name2 = part_name[len(part_name) - 1]
-                    benchmark_name = re.split('\.', part_name2)[0]
+                    part_name2 = re.split('-', part_name[len(part_name) - 1])
+                    benchmark_name = re.split('\.', part_name2[len(part_name2) - 1])[0]
 
                     #handle special cases where test contains '_'
                     if benchmark_name == 'info':
