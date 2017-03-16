@@ -44,9 +44,9 @@ class Coremark(Test):
         d_distro = distro.detect()
         arch = d_distro.arch
         if arch == 'aarch64':
-            build.make(self.srcdir, extra_args='PORT_DIR=linux64 CC=$GCC compile')
+            build.make(self.srcdir, extra_args='PORT_DIR=linux64 CC=gcc compile')
         elif arch == 'aarch32':
-            build.make(self.srcdir, extra_args='PORT_DIR=linux64 CC=$GCC compile')
+            build.make(self.srcdir, extra_args='PORT_DIR=linux64 CC=gcc compile')
         elif arch == 'x86_64':
             build.make(self.srcdir, extra_args='PORT_DIR=linux64 CC=gcc \'XCFLAGS=-msse4\' compile')
         else:
