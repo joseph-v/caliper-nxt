@@ -9,14 +9,6 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 #
-# See LICENSE for more details.
-#
-# Copyright: 2016 IBM
-# Author: Praveen K Pandey <praveen@linux.vnet.ibm.com>
-#
-# Based on code by Martin Bligh <mbligh@google.com>
-#   copyright: 2008 Google
-#   https://github.com/autotest/autotest-client-tests/tree/master/lmbench
 
 import os
 import tempfile
@@ -29,62 +21,53 @@ from avocado.utils import build
 from avocado.utils import distro
 from avocado.utils.software_manager import SoftwareManager
 
+def start_marker(cmd):
+    start_log = "%%%%%%         %s test start       %%%%%% \n" % cmd
+    echo_cmd = "echo '%s' " % start_log
+    process.run(echo_cmd)
+    echo_cmd = "echo '<<BEGIN TEST>>>'"
+    process.run(echo_cmd)
+
+def end_marker(status):
+    echo_cmd = "echo '[status]: %s' " % status
+    process.run(echo_cmd)
+    echo_cmd = "echo '<<<END>>>'"
+    process.run(echo_cmd)
+    echo_cmd = "echo '%%%%%% test_end %%%%%%'"
+    process.run(echo_cmd)
 
 class Linpack(Test):
 
     """
-    
+    Linpack benchmark
     """
 
     def setUp(self):
-        '''
-        Build coremark
-        Source:
-        http://.tar.gz
-        '''
-        fsdir = self.params.get('fsdir', default=None)
-        temp_file = self.params.get('temp_file', default=None)
         self.tmpdir = tempfile.mkdtemp(prefix='avocado_' + __name__)
         smm = SoftwareManager()
         if not smm.check_installed("gcc") and not smm.install("gcc"):
             self.error("Gcc is needed for the test to be run")
-        #tarball = self.fetch_asset('http://www.bitmover.com'
-        #                           '/lmbench/lmbench3.tar.gz')
         data_dir = os.path.abspath(self.datadir)
-        #archive.extract(tarball, self.srcdir)
-        #version = os.path.basename(tarball.split('.tar.')[0])
         self.srcdir = os.path.join(data_dir, 'source_code')
-        #self.srcdir = os.path.join(self.srcdir, 'lmbench3')
-
-        # Patch for lmbench
-
         os.chdir(self.srcdir)
 
-        # makefile_patch = 'patch -p1 < %s' % (
-        #     os.path.join(data_dir, 'makefile.patch'))
-        # build_patch = 'patch -p1 < %s' % (os.path.join(
-        #     data_dir, '0001-Fix-build-issues-with-lmbench.patch'))
-        # lmbench_fix_patch = 'patch -p1 < %s' % (os.path.join(
-        #     data_dir, '0002-Changing-shebangs-on-lmbench-scripts.patch'))
-        # ostype_fix_patch = 'patch -p1 < %s' % (
-        #     os.path.join(data_dir, 'fix_add_os_type.patch'))
-        #
-        # process.run(makefile_patch, shell=True)
-        # process.run(build_patch, shell=True)
-        # process.run(lmbench_fix_patch, shell=True)
-        # process.run(ostype_fix_patch, shell=True)
-
-        #build.make(self.srcdir)
         d_distro = distro.detect()
         arch = d_distro.arch
-        if arch == 'android':
-            #Fixme: correct android build
-            build.make(self.srcdir, extra_args='')
+        if arch == 'x86_32' or arch == 'x86_64':
+            build.make(self.srcdir, extra_args='CC=gcc linpack')
+        elif arch == 'aarch32' or arch == 'aarch64':
+            build.make(self.srcdir, extra_args='CC=gcc linpack')
         else:
             build.make(self.srcdir, extra_args='CC=gcc linpack')
-            #build.make(self.srcdir, extra_args='CC=gcc ')
 
-        os.chdir(self.srcdir)
+        exec_path = os.path.join(self.srcdir, 'bin')
+        if not os.path.exists(exec_path):
+            try:
+                os.mkdir(exec_path)
+            except:
+                print "Failed to create bin folder"
+                return -1
+
         process.run('mv linpack_sp ./bin/linpack_sp')
         process.run('mv linpack_dp ./bin/linpack_dp')
 
@@ -93,57 +76,27 @@ class Linpack(Test):
 
         path = os.path.join(self.srcdir, 'bin')
         os.chdir(path)
-        cwd = os.getcwd()
 
-        #====================
-        cmd = 'linpack'
-        start_log = "%%%%%%         %s test start       %%%%%% \n" % cmd
-        echo_cmd = "echo '%s' " % start_log
-        process.run(echo_cmd)
-        echo_cmd = "echo '<<BEGIN TEST>>>'"
-        process.run(echo_cmd)
-        #===================
-#        process.run('./linpack_sp; exit $[ $? - 1 ]')
-        process.run('./linpack_sp')
-        # ====================
-        echo_cmd = "echo '[status]: PASS'"
-        process.run(echo_cmd)
-        echo_cmd = "echo 'Time in Seconds:0.0123'"
-        process.run(echo_cmd)
-        echo_cmd = "echo '<<<END>>>'"
-        process.run(echo_cmd)
-        echo_cmd = "echo '%%%%%% test_end %%%%%%'"
-        process.run(echo_cmd)
-        # ===================
+        # ==== Case - 1 ===============
+        start_marker('linpack_sp')
 
-        # ====================
-        cmd = 'linpack'
-        start_log = "%%%%%%         %s test start       %%%%%% \n" % cmd
-        echo_cmd = "echo '%s' " % start_log
-        process.run(echo_cmd)
-        echo_cmd = "echo '<<BEGIN TEST>>>'"
-        process.run(echo_cmd)
-        # ===================
-#        process.run('./linpack_dp; exit $[ $? - 1 ]')
-        process.run('./linpack_dp')
-        # ====================
-        echo_cmd = "echo '[status]: PASS'"
-        process.run(echo_cmd)
-        echo_cmd = "echo 'Time in Seconds:0.0123'"
-        process.run(echo_cmd)
-        echo_cmd = "echo '<<<END>>>'"
-        process.run(echo_cmd)
-        echo_cmd = "echo '%%%%%% test_end %%%%%%'"
-        process.run(echo_cmd)
+        try:
+            process.run('./linpack_sp')
+        except Exception:
+            status = 'FAIL'
+        else:
+            status = 'PASS'
 
-        # ===================
+        end_marker(status)
 
+        # ==== Case - 2 ===============
+        start_marker('linpack_dp')
 
+        try:
+            process.run('./linpack_dp')
+        except Exception:
+            status = 'FAIL'
+        else:
+            status = 'PASS'
 
-
-    def tearDown(self):
-        print 'Tear Down is Done for Linpack test'
-
-
-if __name__ == "__main__":
-    main()
+        end_marker(status)
