@@ -856,7 +856,7 @@ class Parser(JobPre, JobPost):
         try:
             config_file = getattr(job.args, 'config_filename', False)
             if not config_file:
-                self.log.error("Caliper config file is not specified")
+                # Normal avocado run, do not require caliper functionality
                 return
 
             if not os.path.exists(config_file):
