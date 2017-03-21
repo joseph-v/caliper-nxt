@@ -12,10 +12,12 @@ import string
 import errno
 
 from avocado.core.plugin_interfaces import JobPre, JobPost
-#from avocado.plugins.parser.tests_setting import BaseCfg
 
 import ConfigParser
 
+#Logging setup
+LOG = logging.getLogger("avocado.app")
+LOG.setLevel(logging.INFO)
 
 #===============================================================
 # Configuration class for caliper input and output
@@ -37,9 +39,9 @@ class Config():
             test_dir = input_config.options(input_section[1])
             self.tests_config_dir = input_config.get(input_section[1], test_dir[0])
         except Exception:
-            print 'DEBUG: Caliper:ERROR initializing Configurations ...'
+            LOG.error("Failed to initialize Configurations")
         else:
-            print 'DEBUG: Caliper:Config initialized ...'
+            LOG.debug("Config initialized")
 
 #===============================================================
 # Scoring tools
@@ -88,9 +90,6 @@ class Scores_method:
 class Utils():
     name = 'Utils'
     description = 'Utilities for Caliper parser'
-
-    # def __init__(self):
-    #     print "Initialize Utils"
 
     def read_config_file(self, filename):
         config = ConfigParser.ConfigParser()
@@ -153,25 +152,19 @@ class Utils():
         #         flag = 0
         #     return flag
 
-    def get_host_name(self, host):
-        return 'htsat-slave2-com'
-        # try:
-        #     arch_result = host.run("/bin/uname -a")
-        # except error.CmdError, e:
-        #     raise error.ServRunError(e.args[0], e.args[1])
-        # else:
-        #     returncode = arch_result.exit_status
-        #     if returncode == 0:
-        #         output = arch_result.stdout
-        #         try:
-        #             machine_name = settings.get_value('CLIENT', 'Platform_name', type=str)
-        #         except:
-        #             machine_name = output.split(" ")[1]
-        #         return machine_name
-        #     else:
-        #         msg = "Caliper does not support this kind of arch machine"
-        #         raise error.ServUnsupportedArchError(msg)
+    def get_host_name(self, out_dir):
+        try:
+            uname_file = os.path.join(out_dir, 'sysinfo', 'post', 'uname_-a')
+            if os.path.exists(uname_file):
+                fp = open(uname_file, "r")
 
+                uname_str = fp.read()
+                fp.close()
+            uname_parts = uname_str.split(' ')
+        except Exception:
+            LOG.error("Failed to read hostname")
+        else:
+            return uname_parts[1]
 
 #===============================================================
 # Write tool utility
@@ -182,15 +175,12 @@ class  Write_Tool():
     name = 'Tools'
     description = 'Tools for Caliper parser'
 
-    # def __init__(self):
-    #     print 'Init of write tool'
-
     def compute_score(self, score_way, result_fp):
         # this part should be improved
         func_args = score_way.split()
         score_method = func_args[0]
         if len(func_args) < 2:
-            logging.info("The configuration of run the benchmark is wrong")
+            LOG.info("The configuration of run the benchmark is wrong")
             return -5
         result_score = 0
         base = string.atof(func_args[1])
@@ -203,7 +193,7 @@ class  Write_Tool():
                 try:
                     result_score = Scores_method.exp_score_compute(result_fp,
                                                                    base, index)
-                    logging.debug("After computing, the result is %f" %
+                    LOG.debug("After computing, the result is %f" %
                                   result_score)
                 except Exception, e:
                     raise e
@@ -280,7 +270,7 @@ class  Write_Tool():
                 except Exception:
                     flag = -1
             else:
-                logging.info("There is wrong with the parser")
+                LOG.info("There is wrong with the parser")
                 flag = -1
             if flag != 1:
                 return flag
@@ -355,8 +345,8 @@ class  Write_Tool():
                     x[RES][tmp[0]][tmp[1]][tmp[2]]['Point_Scores'][tmp[3]] = result
                     flag = 1
         except BaseException, e:
-            logging.debug("There is wrong when write the data in file %s." % yaml)
-            logging.debug(e)
+            LOG.debug("There is wrong when write the data in file %s." % yaml)
+            LOG.debug(e)
             flag = -1
         else:
             fp.close()
@@ -365,21 +355,6 @@ class  Write_Tool():
             outfile.close()
             flag = 1
         return flag
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 # ===============================================================
@@ -404,35 +379,15 @@ class LogConverter():
         test_parser_dir = os.path.abspath(os.path.join(
                 parser_dir, 'plugins', 'caliper_parser', 'parser_scripts'))
 
-
-        # FRONT_TMP_DIR = os.path.join(CALIPER_DIR, 'frontend')
-
-        # the parser function defined in the config file is to filter the output.
-        # get the abspth of the parser.py which is defined in the config files.
-        # changed by Elaine Aug 8-10
-
-        # JVP: Commented below as we give full path of parser
-
         if not parser_file:
             pwd_file = bench_name + "_parser.py"
             parser_file = os.path.join(test_parser_dir, pwd_file)
         else:
             parser_file = os.path.join(test_parser_dir, parser_file)
 
-        # rel_path = os.path.relpath(parser_file,
-        #                            os.path.dirname(current_dir))
         rel_path = os.path.relpath(parser_file, parser_dir)
         parser_path = rel_path.split(".py")[0]
         parser_name = parser_path.replace(os.sep, '.')
-
-        #parser_name = 'parser_scripts.' + parser_file
-
-        # rel_path = os.path.relpath(parser_file, os.path.dirname(AVOCADO_DIR))
-        # parser_path = rel_path.split(".")[0]
-        # parser_name = parser_path.replace(os.sep, '.')
-
-        #parser_dir_path = PARSER_LOG_DIR
-        #parser_file = os.path.join(parser_dir_path, parser_file)
 
         result = 0
         if os.path.isfile(parser_file):
@@ -440,12 +395,12 @@ class LogConverter():
                 # import the parser module import_module
                 parser_module = importlib.import_module(parser_name)
             except ImportError, e:
-                logging.info(e)
+                logging.error("Fail to import module \'%s\'", e)
                 return -3
             try:
                 methodToCall = getattr(parser_module, parser)
             except Exception, e:
-                logging.info(e)
+                logging.error("Fail to get parser function \'%s\'", e)
                 return -4
             else:
                 infp = open(infile, "r")
@@ -460,13 +415,12 @@ class LogConverter():
                                           re.DOTALL):
                     try:
                         # call the parser function to filter the output
-                        logging.debug("Begining to parser the result of the case")
                         if not parser == 'hardware_info_parser':
                             result = methodToCall(content, outfp)
                         else:
                             result = methodToCall(content, outfp, host_name, yaml_dir)
                     except Exception, e:
-                        logging.info(e)
+                        LOG.debug("Fail to parse \'%s\'", e)
                         return -5
             outfp.close()
             infp.close()
@@ -480,7 +434,6 @@ class LogConverter():
         """
         try:
             # get the abspath, which is filename of run config for the benchmark
-            # JVP individual test case configuration -- to be copied
             bench_conf_file = os.path.join(
                 self.tests_config_dir,
                 test_sub_dir, run_file)
@@ -497,9 +450,8 @@ class LogConverter():
 
         LTP_TEST = "ltp"
 
-        # logging.debug("the sections to run are: %s" % sections_run)
-        # print "DEBUG: Caliper: sections to run are: %s" % sections_run
-        host_name = self.utils.get_host_name('dummy')
+        LOG.debug("Sections to run %s" % sections_run)
+        host_name = self.utils.get_host_name(os.path.abspath(os.path.join(caliper_output_dir, '..')))
         yaml_dir = os.path.join(os.path.join(caliper_output_dir, 'results'), 'yaml')
 
         exec_dir = os.path.join(caliper_output_dir, 'output_logs')
@@ -509,11 +461,11 @@ class LogConverter():
                 os.mkdir(exec_dir)
             except OSError as e:
                 if e.errno != errno.EEXIST:
-                    print 'Directory exists'
+                    Log.debug('Directory exists')
                 elif e.errno != errno.EACCES:
-                    print 'Access violation'
+                    Log.debug('Access violation')
                 else:
-                    print 'Something else happened'
+                    Log.debug('Something else happened')
 
         log_bench = os.path.join(exec_dir, bench_name)
         logfile = log_bench + "_output.log"
@@ -525,12 +477,10 @@ class LogConverter():
                 return -1
 
         tmp_log_file = log_bench + "_output_tmp.log"
-        #exec_dir = os.path.join(caliper_output_dir, 'parser_logs')
         parser_result_file = log_bench + "_parser.log"
         tmp_parser_file = log_bench + "_parser_tmp.log"
         if os.path.exists(parser_result_file):
             os.remove(parser_result_file)
-        # output_logs_names = glob.glob(Folder.exec_dir+"/*output.log")
 
         # for each command in run config file, read the config for the benchmark
         for i in range(0, len(sections_run)):
@@ -543,8 +493,7 @@ class LogConverter():
                 parser = configRun.get(sections_run[i], 'parser')
                 command = configRun.get(sections_run[i], 'command')
             except Exception:
-                # logging.debug("no value for the %s" % sections_run[i])
-                #print "DEBUG: Caliper: sections to run are: %s" % sections_run[i]
+                LOG.debug("no value for the %s" % sections_run[i])
                 continue
 
             if bench_name == LTP_TEST:
@@ -580,9 +529,9 @@ class LogConverter():
                 dic[bench_name][sections_run[i]]["value"] = parser_result
 
             except Exception, e:
-                logging.info("Error while parsing the result of \" %s \""
+                LOG.debug("Error while parsing the result of \" %s \""
                              % sections_run[i])
-                logging.info(e)
+                LOG.debug(e)
                 if os.path.exists(tmp_parser_file):
                     os.remove(tmp_parser_file)
                 if os.path.exists(tmp_log_file):
@@ -600,12 +549,10 @@ class LogConverter():
     #def parse_logs(self, config_filename, caliper_output_dir):
     def parse_logs(self, conf):
 
-        # TODO: use config object here JVP
         caliper_output_dir = conf.caliper_output
         config_filename = conf.config_file
         self.tests_config_dir = conf.tests_config_dir
 
-        #self.output_dir = caliper_output_dir
         input_config, input_section = self.utils.read_config_file(config_filename)
         config_files = input_config.options(input_section[0])
 
@@ -615,19 +562,14 @@ class LogConverter():
             # run benchmarks selected in each configuration file
             # config_file = os.path.join(caliper_path.CALIPER_PRE, config_files[i])
             config_file = input_config.get(input_section[0], config_files[i])
-            # config_file = os.path.join(config_files[i])
             config, sections = self.utils.read_config_file(config_file)
 
-            # logging.debug(sections)
-            print "DEBUG: Caliper: Sections =%s" % sections
+            LOG.debug("Sections =%s", sections)
 
             # get if it is the 'common' or 'arm' or 'android'
             classify = config_files[i].split("/")[-1].strip().split("_")[0]
 
-            # logging.debug(classify)
-            print "DEBUG: Caliper: classify =%s" % classify
-
-            print "DEBUG: Caliper: sections size =", len(sections)
+            LOG.debug("classify = %s", classify)
 
             for i in range(0, len(sections)):
                 dic[sections[i]] = {}
@@ -638,31 +580,15 @@ class LogConverter():
                 except Exception:
                     raise AttributeError("The is no option value of parser")
 
-                logging.info("Parsing %s" % sections[i])
+                #LOG.debug("Parsing %s" % sections[i])
                 bench = os.path.join(classify, sections[i])
 
                 try:
                     result = self.parse_one_test(bench, caliper_output_dir,
                                                  sections[i], run_file, parser, dic)
                 except Exception:
-                    logging.info("Running %s Exception" % sections[i])
+                    LOG.error("Running %s Exception" % sections[i])
 
-                    # JVP: TO DO : Handle this exception
-
-                    # crash_handle.main()
-                    # print_format()
-                    # run_flag = Utils.get_fault_tolerance_config(
-                    #    'fault_tolerance', 'run_error_continue', )
-                    # if run_flag == 1:
-                    #    continue
-                    # else:
-                    #    return result
-                else:
-                    logging.info("Parsing %s Finished" % sections[i])
-                    # print_format()
-        # outfp = open(os.path.join(caliper_path.folder_ope.workspace,
-        #                          caliper_path.folder_ope.name.strip()
-        #                          +"/final_parsing_logs.yaml"),'w')
         outfp = open(os.path.join(caliper_output_dir,
                                   conf.parsed_yaml_file), 'w')
         outfp.write(yaml.dump(dic, default_flow_style=False))
@@ -709,7 +635,7 @@ class CalculateScore():
                                                   tmp, result,
                                                   flag)
         except BaseException:
-            logging.debug("There is wrong when computing the score")
+            LOG.error("There is wrong when computing the score")
         return flag1
 
 
@@ -738,7 +664,7 @@ class CalculateScore():
             flag1 = self.write_results.write_yaml_perf(result_yaml, tmp,
                                                   result_fp, flag)
         except BaseException:
-            logging.debug("There is wrong when compute the score.")
+            LOG.error("There is wrong when compute the score.")
         return flag1
 
 
@@ -746,13 +672,11 @@ class CalculateScore():
         tmp = category.split()
         length = len(tmp)
 
-        #
-
         # TODO: remove dirctory calculation
         results_dir = os.path.join(self.output_dir, 'results')
         yaml_dir = os.path.join(results_dir, 'yaml')
 
-        target_name = self.utils.get_host_name(target)
+        target_name = self.utils.get_host_name(os.path.abspath(os.path.join(self.output_dir, '..')))
         result_yaml_name = target_name + '.yaml'
         score_yaml_name = target_name + '_score.yaml'
 
@@ -770,18 +694,23 @@ class CalculateScore():
 
 
     def collate_logs(self, yaml_file, flag):
+        """
+
+        :param yaml_file:
+        :param flag: = 1 to generate raw yaml file
+                     else (2) to compute score
+
+        :return:
+        """
         # according the method in the config file, compute the score
-        # dic = yaml.load(open(caliper_path.folder_ope.final_parser, 'r'))
         final_parserd_file = os.path.join(self.output_dir, yaml_file)
         dic = yaml.load(open(final_parserd_file, 'r'))
-
-        #utils = Utils()
 
         # Need to correctly identify options ARM/ARM32/Server
         options = ''
 
         config_files = self.utils.get_cases_def_files(options, self.tests_config_dir)
-        print "DEBUG: Caliper: config_files =%s" % config_files
+        LOG.debug("config_files =%s", config_files)
 
         for i in range(0, len(config_files)):
             config_file = os.path.join(config_files[i])
@@ -794,13 +723,6 @@ class CalculateScore():
                 except Exception:
                     raise AttributeError("The is no option value of Computing")
 
-                # print_format()
-                if flag == 1:
-                    # logging.info("Generation raw yaml for %s" % sections[j])
-                    print "Generation raw yaml for %s" % sections[j]
-                else:
-                    print "Computing Score for %s" % sections[j]
-                    # logging.info("Computing Score for %s" % sections[j])
                 bench = os.path.join(classify, sections[j])
                 try:
                     # get the abspath, which is filename of run config for the benchmark
@@ -818,25 +740,26 @@ class CalculateScore():
                         scores_way = configRun.get(sections_run[k], 'scores_way')
                         command = configRun.get(sections_run[k], 'command')
                     except Exception:
-                        logging.debug("no value for the %s" % sections_run[k])
-                        logging.info(e)
+                        LOG.debug("no value for the %s" % sections_run[k])
+                        LOG.debug(e)
                         continue
                     try:
-                        logging.debug("Computing the score of the result of command: %s"
-                                      % command)
+                        #LOG.debug("Command: %s", command)
 
-                        # JVP: needs to remove this target_exec_dir
+                        # TODO: needs to remove this target_exec_dir
                         target_exec_dir = os.path.join(self.output_dir, 'results')
                         flag_compute = self.compute_case_score(dic[sections[j]][sections_run[k]]["value"], category,
                                                                scores_way, target_exec_dir, flag)
                     except Exception, e:
-                        #print "DEBUG: Caliper: ERROR WHile Computing %s ...." % sections_run[k]
-                        logging.info("Error while computing the result of \"%s\"" % sections_run[k])
-                        logging.info(e)
                         continue
                     else:
+                        if flag == 1:
+                            LOG.debug("Generated raw yaml for %s" % sections_run[k])
+                        else:
+                            LOG.debug("Computed Score for %s" % sections_run[k])
+
                         if not flag_compute and dic[bench][sections_run[k]["value"]]:
-                            logging.info("Error while computing the result\
+                            LOG.info("Error while computing the result\
                                             of \"%s\"" % command)
 
 #===============================================================
@@ -849,7 +772,7 @@ class Parser(JobPre, JobPost):
     description = 'Parses caliper output to YAML output'
 
     def __init__(self):
-        self.log = logging.getLogger("avocado.app")
+        self.log = LOG
 
     def copy_test_outputs(self, directory):
         """Copy stdout of test to a common folder for parser to process"""
@@ -862,8 +785,8 @@ class Parser(JobPre, JobPost):
                     full_dirname = os.path.basename(os.path.dirname(full_filename))
 
                     part_name = re.split('_', re.split(':', full_dirname)[0])
-                    part_name2 = part_name[len(part_name) - 1]
-                    benchmark_name = re.split('\.', part_name2)[0]
+                    part_name2 = re.split('-', part_name[len(part_name) - 1])
+                    benchmark_name = re.split('\.', part_name2[len(part_name2) - 1])[0]
 
                     #handle special cases where test contains '_'
                     if benchmark_name == 'info':
@@ -872,8 +795,7 @@ class Parser(JobPre, JobPost):
                     from shutil import copyfile
                     copyfile(full_filename,
                              os.path.join(self.output_logs_dir, benchmark_name + "_output.log"))
-
-                    print 'DEBUG: Caliper:Copied file %s_output.log ' % benchmark_name
+                    self.log.debug("Copied file %s_output.log ", benchmark_name)
 
     def process_logs(self, job):
 
@@ -881,30 +803,27 @@ class Parser(JobPre, JobPost):
             directory = os.path.join(job.logdir, 'test-results')
             self.copy_test_outputs(directory)
         except Exception:
-            print 'DEBUG: Caliper:ERROR while COPY output logs ...'
+            self.log.error("Failed to copy test output logs")
 
         try:
             self.converter = LogConverter()
             self.converter.parse_logs(self.config)
         except Exception:
-            print 'DEBUG: Caliper:ERROR while PARSE ...'
-
+            self.log.error("Failed to parse logs")
 
         try:
             self.scorer = CalculateScore(self.config)
             input_yaml = self.config.parsed_yaml_file
             self.scorer.collate_logs(input_yaml, 1)
         except Exception:
-            print 'DEBUG: Caliper:ERROR while SCORE 1 ...'
-
+            self.log.error("Failed to calculate score")
 
         try:
             self.scorer.collate_logs(input_yaml, 2)
         except Exception:
-            print 'DEBUG: Caliper:ERROR while SCORE 2 ...'
+            self.log.error("Failed to collate score")
 
-
-        print 'DEBUG: Caliper:PARSING is Done ...'
+        self.log.debug("Caliper PARSING and SCORING is Done")
 
     def create_output_dir(self, output_dir):
         self.output_logs_dir = os.path.join(output_dir, 'output_logs')
@@ -922,33 +841,36 @@ class Parser(JobPre, JobPost):
                 os.mkdir(self.yaml_dir)
         except OSError as e:
             if e.errno != errno.EEXIST:
-                print 'Directory exists'
+                self.log.error("Directory exists")
             elif e.errno != errno.EACCES:
-                print 'Access violation'
+                self.log.error("Access violation")
             else:
-                print 'Something else happened'
+                self.log.error("Something else happened")
 
     def pre_parse(self, job):
-        print 'DEBUG: Caliper:Prepare for Caliper parser  ...'
+        self.log.debug("Prepare for Caliper parser")
 
 
     def parser(self, job):
         # Read configuration file name from command line
-        config_file = getattr(job.args, 'config_filename', False)
-        if not config_file:
-            print 'DEBUG: Caliper: Caliper parser is not enabled...'
-            return
+        try:
+            config_file = getattr(job.args, 'config_filename', False)
+            if not config_file:
+                # Normal avocado run, do not require caliper functionality
+                return
 
-        if not os.path.exists(config_file):
-            print 'DEBUG: Caliper: Caliper config file is not found...'
-            return
+            if not os.path.exists(config_file):
+                self.log.error("Caliper config file \'%s\' is not found", config_file)
+                return
 
-        # Read output folder name from command line
-        output_dir = getattr(job.args, 'caliper_output', False)
-        if not output_dir:
-            output_dir = os.path.join(job.logdir, 'caliper_output')
-            print 'Output folder is not specified in commandline'
-            print 'Using default location %s' % output_dir
+            # Read output folder name from command line
+            output_dir = getattr(job.args, 'caliper_output', False)
+            if not output_dir:
+                output_dir = os.path.join(job.logdir, 'caliper_output')
+                self.log.debug("Output folder is not specified in commandline")
+                self.log.info("Using default output path \'%s\'", output_dir)
+        except Exception:
+            self.log.error("Caliper parser is not enabled")
 
         try:
             # Instantiate config
@@ -957,7 +879,7 @@ class Parser(JobPre, JobPost):
             # Create ouput folders
             self.create_output_dir(output_dir)
         except Exception:
-            print 'DEBUG: Caliper:ERROR while initializing parser ...'
+            self.log.error("ERROR while initializing parser")
 
         # Start processing log files ...
         self.process_logs(job)
