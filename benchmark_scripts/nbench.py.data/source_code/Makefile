@@ -122,9 +122,9 @@ emfloat.o: emfloat.h emfloat.c nmglobal.h pointer.h Makefile
 pointer.h: pointer Makefile
 	$(CC) $(MACHINE) $(DEFINES) $(CFLAGS)\
 		-o pointer pointer.c
-#	rm -f pointer.h
-#	if [ "4" == "$(./pointer)" ]; then touch pointer.h; \
-#	else echo "#define LONG64" >pointer.h; fi
+	rm -f pointer.h
+	if [ "4" == "$(./pointer)" ]; then touch pointer.h; \
+	else echo "#define LONG64" >pointer.h; fi
 
 misc.o: misc.h misc.c Makefile
 	$(CC) $(MACHINE) $(DEFINES) $(CFLAGS)\
