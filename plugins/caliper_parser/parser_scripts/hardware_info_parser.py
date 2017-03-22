@@ -8,36 +8,12 @@ import re
 import pdb
 import subprocess
 import time
-#import caliper.server.utils as server_utils
-#from caliper.server.hosts import host_factory
-#from caliper.client.shared import error
-#from caliper.client.shared.settings import settings
-#from caliper.client.shared.caliper_path import folder_ope as Folder
+
 path = "./HardwareInfo"
 out_path = "./hardware_yaml"
 lscpu_list = ['Architecture','Socket\(s\)','Cpu_Type','Core\(s\) per socket','Thread\(s\) per core','Model name','CPU\(s\)','NUMA node\(s\)','BogoMIPS','Byte Order']
 lsb_release_list = ['Distributor ID','Description','Release','Codename']
 lspci_list = ['Ethernet controller [0200]']
-# def get_remote_host():
-#     try:
-#         client_ip = settings.get_value('CLIENT', 'ip', type=str)
-#     except Exception, e:
-#         client_ip = '127.0.0.1'
-#     try:
-#         port = settings.get_value('CLIENT', 'port', type=int)
-#     except Exception, e:
-#         port = 22
-#     try:
-#         user = settings.get_value('CLIENT', 'user', type=str)
-#     except Exception, e:
-#         user = os.getlogin()
-#     try:
-#         password = settings.get_value('CLIENT', 'password', type=str)
-#     except Exception, e:
-#         raise error.ServRunError(e.args[0], e.args[1])
-#
-#     remote_host = host_factory.create_host(client_ip, user, password, port)
-#     return remote_host
 
 def network_populate(dic,contents):
     bogo = 0
@@ -188,8 +164,6 @@ def disk_populate(dic,contents):
                             asd = re.search(r'\s+vendor:\s([\w\S ]+)',block[1])
                             dic['Hardware_Info']['DISK']['RAID_Vendor']= asd.group(1).strip()
             elif group.group(2).strip() == "lsblk":
-                #if bool(re.search(r'sda\s+([\d.]+G)[\w\S ]+',blocks)):
-                    #asd = re.search(r'sda\s+([\d.]+G)[\w\S ]+',blocks)
                 if bool(re.search(r'sdb\s+[\w\s]+\s+([\d\.]+G)\s+([\w]+)[\w\s]+disk\s+([A-Za-z]+)',blocks)):
                     asd = re.search(r'sdb\s+[\w\s]+\s+([\d\.]+G)\s+([\w]+)[\w\s]+disk\s+([A-Za-z]+)',blocks)
                     dic['Hardware_Info']['DISK']['sdb_Size']= asd.group(1).strip()
@@ -200,9 +174,6 @@ def disk_populate(dic,contents):
                     dic['Hardware_Info']['DISK']['sda_Size']= asd.group(1).strip()
                     dic['Hardware_Info']['DISK']['sda_Model']= asd.group(2).strip()
                     dic['Hardware_Info']['DISK']['sda_Vendor']= asd.group(3).strip()
-                #if bool(re.search(r'sdb\s+ext4\s+([\d\.]+G)[\w\S ]+',blocks)):
-                #    asd = re.search(r'sdb\s+ext4\s+([\d\.]+G)[\w\S ]+',blocks)
-                #    dic['Hardware_Info']['DISK']['sdb_Size']= asd.group(1).strip()
     return
 
 
@@ -314,16 +285,6 @@ def update(dic,outfp):
             for key,value in info_dic.iteritems():
                 if value in update_list:
                     dic[hardware_info][category][key] = "*TBA"
-    #files = ['./HardwareInfo/D02-32G_Targetinfo']
-    #if filename in files:
-    #    cores = int(dic['Hardware_Info']['CPU']['CPU_Cores'])
-    #    cached = int(dic['Hardware_Info']['MEMORY']['L1_D-Cache_Size'].split(' ')[0])
-    #    cachei = int(dic['Hardware_Info']['MEMORY']['L1_I-Cache_Size'].split(' ')[0])
-    #    cached = str(cached/cores) + ' kB'
-    #    cachei = str(cachei/cores) + ' kB'
-
-    #    dic['Hardware_Info']['MEMORY']['L1_D-Cache_Size'] = cached
-    #    dic['Hardware_Info']['MEMORY']['L1_I-Cache_Size'] = cachei
 
     outfp.write(yaml.dump(dic,default_flow_style=False))
     return 
@@ -352,13 +313,12 @@ def hardware_info_parser(content,outfp,host_name,yaml_directory):
     kernel_populate(dic,contents)
     network_populate(dic,contents)
     update(dic,outfp)
-    #host = get_remote_host()
+
     dic_yaml['Configuration']['CPU'] = dic['Hardware_Info']['CPU']['CPU_Cores']
     dic_yaml['Configuration']['CPU_type'] = dic['Hardware_Info']['CPU']['Cpu_Type']
     dic_yaml['Configuration']['Memory'] = dic['Hardware_Info']['MEMORY']['Main_Memory_Size']
     dic_yaml['Configuration']['OS_Version'] = dic['Hardware_Info']['KERNEL']['Version']
     dic_yaml['Configuration']['Byte_order'] = dic['Hardware_Info']['CPU']['Byte_Order']
-    #dic_yaml['Configuration']['Hostname'] = server_utils.get_host_name(host)
     dic_yaml['Configuration']['Hostname'] = host_name
     dic_yaml['Configuration']['L1d_cache'] = dic['Hardware_Info']['MEMORY']['L1_D-Cache_Size']
     dic_yaml['Configuration']['L1i_cache'] = dic['Hardware_Info']['MEMORY']['L1_I-Cache_Size']
@@ -367,13 +327,10 @@ def hardware_info_parser(content,outfp,host_name,yaml_directory):
     dic_yaml['Configuration']['Machine_arch'] = dic['Hardware_Info']['CPU']['Architecture']
     dic_yaml['name'] = dic_yaml['Configuration']['Hostname']
     yaml_name = dic_yaml['Configuration']['Hostname'] + ".yaml"
-    #yaml_directory = '/home/joseph/avocado/caliper_results/results/yaml'
-    #yaml_path = os.path.join(Folder.yaml_dir,yaml_name)
     yaml_path = os.path.join(yaml_directory,yaml_name)
     with open(yaml_path,'w') as outfp:
         outfp.write(yaml.dump(dic_yaml,default_flow_style = False))
     yaml_name_hw = dic_yaml['Configuration']['Hostname'] + "_hw_info.yaml"
-    #yaml_path_hw = os.path.join(Folder.yaml_dir,yaml_name_hw)
     yaml_path_hw = os.path.join(yaml_directory,yaml_name_hw)
     with open(yaml_path_hw,'w') as outfp:
         outfp.write(yaml.dump(dic,default_flow_style = False))
