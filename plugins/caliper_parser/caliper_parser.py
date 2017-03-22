@@ -17,7 +17,7 @@ import ConfigParser
 
 #Logging setup
 LOG = logging.getLogger("avocado.app")
-LOG.setLevel(logging.INFO)
+#LOG.setLevel(logging.INFO)
 
 #===============================================================
 # Configuration class for caliper input and output
@@ -771,9 +771,6 @@ class Parser(JobPre, JobPost):
     name = 'Parser'
     description = 'Parses caliper output to YAML output'
 
-    def __init__(self):
-        self.log = LOG
-
     def copy_test_outputs(self, directory):
         """Copy stdout of test to a common folder for parser to process"""
 
@@ -795,7 +792,7 @@ class Parser(JobPre, JobPost):
                     from shutil import copyfile
                     copyfile(full_filename,
                              os.path.join(self.output_logs_dir, benchmark_name + "_output.log"))
-                    self.log.debug("Copied file %s_output.log ", benchmark_name)
+                    LOG.debug("Copied file %s_output.log ", benchmark_name)
 
     def process_logs(self, job):
 
@@ -803,27 +800,27 @@ class Parser(JobPre, JobPost):
             directory = os.path.join(job.logdir, 'test-results')
             self.copy_test_outputs(directory)
         except Exception:
-            self.log.error("Failed to copy test output logs")
+            LOG.error("Failed to copy test output logs")
 
         try:
             self.converter = LogConverter()
             self.converter.parse_logs(self.config)
         except Exception:
-            self.log.error("Failed to parse logs")
+            LOG.error("Failed to parse logs")
 
         try:
             self.scorer = CalculateScore(self.config)
             input_yaml = self.config.parsed_yaml_file
             self.scorer.collate_logs(input_yaml, 1)
         except Exception:
-            self.log.error("Failed to calculate score")
+            LOG.error("Failed to calculate score")
 
         try:
             self.scorer.collate_logs(input_yaml, 2)
         except Exception:
-            self.log.error("Failed to collate score")
+            LOG.error("Failed to collate score")
 
-        self.log.debug("Caliper PARSING and SCORING is Done")
+            LOG.debug("Caliper PARSING and SCORING is Done")
 
     def create_output_dir(self, output_dir):
         self.output_logs_dir = os.path.join(output_dir, 'output_logs')
@@ -841,36 +838,39 @@ class Parser(JobPre, JobPost):
                 os.mkdir(self.yaml_dir)
         except OSError as e:
             if e.errno != errno.EEXIST:
-                self.log.error("Directory exists")
+                LOG.error("Directory exists")
             elif e.errno != errno.EACCES:
-                self.log.error("Access violation")
+                LOG.error("Access violation")
             else:
-                self.log.error("Something else happened")
+                LOG.error("Something else happened")
 
     def pre_parse(self, job):
-        self.log.debug("Prepare for Caliper parser")
+        LOG.debug("Prepare for Caliper parser")
+        #pass
 
 
     def parser(self, job):
         # Read configuration file name from command line
         try:
+
             config_file = getattr(job.args, 'config_filename', False)
             if not config_file:
                 # Normal avocado run, do not require caliper functionality
                 return
 
             if not os.path.exists(config_file):
-                self.log.error("Caliper config file \'%s\' is not found", config_file)
+                LOG.error("Caliper config file \'%s\' is not found", config_file)
                 return
 
             # Read output folder name from command line
             output_dir = getattr(job.args, 'caliper_output', False)
             if not output_dir:
                 output_dir = os.path.join(job.logdir, 'caliper_output')
-                self.log.debug("Output folder is not specified in commandline")
-                self.log.info("Using default output path \'%s\'", output_dir)
+                LOG.debug("Output folder is not specified in commandline")
+                LOG.info("Using default output path \'%s\'", output_dir)
+
         except Exception:
-            self.log.error("Caliper parser is not enabled")
+            LOG.error("Caliper parser is not enabled")
 
         try:
             # Instantiate config
@@ -879,7 +879,7 @@ class Parser(JobPre, JobPost):
             # Create ouput folders
             self.create_output_dir(output_dir)
         except Exception:
-            self.log.error("ERROR while initializing parser")
+            LOG.error("ERROR while initializing parser")
 
         # Start processing log files ...
         self.process_logs(job)

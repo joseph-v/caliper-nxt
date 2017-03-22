@@ -33,9 +33,9 @@ class Scimark(Test):
         os.chdir(self.srcdir)
         d_distro = distro.detect()
         arch = d_distro.arch
-        if arch == 'arm_32':
+        if arch == 'aarch32':
             build.make(self.srcdir, extra_args='CC=gcc \'CFLAGS=-mfloat-abi=hard -mfpu=vfpv4 -mcpu=cortex-a15\' ')
-        elif arch == 'arm_64':
+        elif arch == 'aarch64':
             build.make(self.srcdir, extra_args='CC=gcc')
         elif arch == 'x86_64':
             build.make(self.srcdir, extra_args='CC=gcc')

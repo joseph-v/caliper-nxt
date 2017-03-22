@@ -38,9 +38,9 @@ class Nbench(Test):
         arch = d_distro.arch
         if arch == 'x86_64' or arch == 'x86_32':
             build.make(self.srcdir, extra_args='nbench CC=gcc')
-        elif arch == 'arm_32':
+        elif arch == 'aarch32':
             build.make(self.srcdir, extra_args='CC=gcc \'CFLAGS=-mfloat-abi=hard -mfpu=vfpv4 -mcpu=cortex-a15\' nbench')
-        elif arch == 'arm_64':
+        elif arch == 'aarch64':
             build.make(self.srcdir, extra_args='CC=gcc \'CFLAGS=-O3 -Icommon_64bit -lrt -lm\' -s')
         else:
             build.make(self.srcdir, extra_args='nbench')
