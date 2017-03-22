@@ -56,16 +56,25 @@ class Dhrystone(Test):
 
         d_distro = distro.detect()
         arch = d_distro.arch
-        if arch == 'aarch32' or arch == 'aarch64':
-            build.make(self.srcdir, extra_args='linux-powerpc')
+        if arch == 'aarch32':
+            build.make(self.srcdir, extra_args='CC=gcc \'CFLAGS=-static -O3 -Icommon_32bit -lrt -lm\' -s')
+        elif arch == 'aarch64':
+            build.make(self.srcdir, extra_args='CC=gcc \'CFLAGS=-static -O3 -funroll-loops -Icommon_64bit -lrt -lm\' -s')
         elif arch == 'x86_64':
             build.make(self.srcdir, extra_args='CC=gcc \'CFLAGS=-O3 -Icommon_64bit -lrt -lm\' -s')
         else:
             build.make(self.srcdir, extra_args='linux')
 
-        os.chdir(self.srcdir)
+        exec_path = os.path.join(self.srcdir, 'bin')
+        if not os.path.exists(exec_path):
+            try:
+                os.mkdir(exec_path)
+            except:
+                print "Failed to create bin folder"
+                return -1
+
         process.run('cp dhry1 dhry2 lloops lpack whets ./bin/')
-        process.run('make CC=$GCC clean')
+        process.run('make CC=gcc clean')
 
     def test(self):
 

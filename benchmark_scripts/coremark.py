@@ -43,16 +43,29 @@ class Coremark(Test):
 
         d_distro = distro.detect()
         arch = d_distro.arch
-        if arch == 'aarch32' or arch == 'aarch64':
+        if arch == 'aarch32':
+            build.make(self.srcdir,
+                       extra_args='PORT_DIR=linux CC=gcc \'XCFLAGS=-mfloat-abi=hard -mfpu=vfpv4 -mcpu=cortex-a15\' compile')
+        elif arch == 'aarch64':
             build.make(self.srcdir, extra_args='PORT_DIR=linux64 CC=gcc compile')
         elif arch == 'x86_64':
             build.make(self.srcdir, extra_args='PORT_DIR=linux64 CC=gcc \'XCFLAGS=-msse4\' compile')
         else:
             build.make(self.srcdir, extra_args='linux')
 
-        os.chdir(self.srcdir)
+        exec_path = os.path.join(self.srcdir, 'bin')
+        if not os.path.exists(exec_path):
+            try:
+                os.mkdir(exec_path)
+            except:
+                print "Failed to create bin folder"
+                return -1
+
         process.run('cp coremark.exe ./bin/coremark')
-        process.run('make PORT_DIR=linux64 CC=$GCC clean')
+        if arch == 'x86_64' or arch == 'aarch64':
+            process.run('make PORT_DIR=linux64 CC=gcc clean')
+        else:
+            process.run('make PORT_DIR=linux CC=gcc clean')
 
     def test(self):
 

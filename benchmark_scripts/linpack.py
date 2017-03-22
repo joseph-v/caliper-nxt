@@ -68,6 +68,13 @@ class Linpack(Test):
                 print "Failed to create bin folder"
                 return -1
 
+        exec_path = os.path.join(self.srcdir, 'bin')
+        if not os.path.exists(exec_path):
+            try:
+                os.mkdir(exec_path)
+            except:
+                print "Failed to create bin folder"
+                return -1
         process.run('mv linpack_sp ./bin/linpack_sp')
         process.run('mv linpack_dp ./bin/linpack_dp')
 

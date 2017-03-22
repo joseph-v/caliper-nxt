@@ -31,9 +31,9 @@ class Tinymembench(Test):
 
         d_distro = distro.detect()
         arch = d_distro.arch
-        if arch == 'arm_32':
+        if arch == 'aarch32':
             build.make(self.srcdir, extra_args='CC=gcc \'CFLAGS=-O2 -mcpu=cortex-a9\'  ')
-        elif arch == 'arm_64':
+        elif arch == 'aarch64':
             build.make(self.srcdir, extra_args='CC=gcc \'CFLAGS=-O2 -mcpu=cortex-a57\' ')
         elif arch == 'x86_64':
             build.make(self.srcdir, extra_args='CC=gcc')
