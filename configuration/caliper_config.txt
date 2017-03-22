@@ -3,13 +3,13 @@
 # --------------------
 
 [config_files]
-common = /home/joseph/avocado/caliper/configuration/test_configs/common_cases_def.cfg
-server = /home/joseph/avocado/caliper/configuration/test_configs/server_cases_def.cfg
+common = /tmp/caliper-nxt/configuration/test_configs/common_cases_def.cfg
+server = /tmp/caliper-nxt/configuration/test_configs/server_cases_def.cfg
 
 # -------------------
 # Test configurations
 # -------------------
 
 [test_configs]
-directory = /home/joseph/avocado/caliper/configuration/test_configs
+directory = /tmp/caliper-nxt/configuration/test_configs
 
